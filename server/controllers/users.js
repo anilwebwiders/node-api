@@ -1,76 +1,68 @@
 const UserModel = require('../models/userSchema');
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
-exports.signin= (req,res)=>{
-    console.log(`This is login`);
-    res.send('THis is sign in API');
-}
 
-//promiss
-/*exports.signup11= (req,res)=>{
-    //console.log('body:',req);
-   
-    const { fname,lname,email,phone,work,password,cpassword } = req.body;
+exports.signin= async (req,res)=>{
 
-    if(!fname || !lname || !email || !phone || !work || !password || !cpassword){
+    const { email, password} = req.body;
+    if(!email || !password){
         res.status(400).json({
             status:0,
-            message:"parameter name is required",
-            data:null
+            message:"Check parameters"
         })
+        return;
     }
 
-    if(password !== cpassword){
-        res.status(400).json({
-            status:0,
-            message:"Confirm password not matched",
-            data:null
-        })
-    }
+    try {
+        const data = await UserModel.findOne({email:email});
+        if(data){
 
-    UserModel.findOne({email:email})
-        .then((userExist) => {
-            if(userExist){
-                console.log(userExist);
+
+            let isMatch = await bcrypt.compare(password,data.password)
+        
+            if(!isMatch){
+
+                
                 res.status(400).json({
                     status:0,
-                    message:"Email already exist.",
-                    data:null
+                    message:'Invalid credentials',
                 })
+                return;
+            } else {
+                let token = await data.generateAuthToken();
+              
+
+                res.cookie('authtoken',token,{
+                    expires:new Date(Date.now()+1000*60*60*24),
+                    httpOnly:true
+                })
+
+                res.status(200).json({
+                    status:1,
+                    message:'Logged in successfully',
+                    data:data
+                })
+                return;
             }
 
-            
-            
-            
-        })
-
-       
-        const user = new UserModel({
-            fname:fname,
-            lname:lname,
-            email:email,
-            phone:phone,
-            work:work,
-            password:password,
-            cpassword:cpassword
-        })
-    
-        user.save().then((newUser)=>{
-            console.log(newUser);
-            res.status(200).json({
-                status:1,
-                message:"Registration has been completed",
-                data:newUser
-            })
-        }).catch((error)=>{
+             
+        } else {
             res.status(400).json({
                 status:0,
-                message:"Something went wrong",
-                data:error
+                message:'Invalid credentials'
             })
+            return;  
+        }
+    } catch (error){
+        res.status(400).json({
+            status:0,
+            message:'something went wrong',
+            error:error
         })
-    
-}*/
-
+        return; 
+    }
+}
 
 exports.signup = async (req,res)=>{
     
